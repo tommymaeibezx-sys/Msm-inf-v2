@@ -20,7 +20,7 @@ def client_from_url(url: str, *, compress_threshold: int | None = None, encrypti
     raise NotImplementedError
 
 
-def server_from_url(url: str, compress_threshold: int | None = None, encryption_key: bytes | None = None) -> TCPAcceptor | Acceptor:
+def server_from_url(url: str, zone_name: str, max_users: int = 100, compress_threshold: int | None = None, encryption_key: bytes | None = None) -> TCPAcceptor | Acceptor:
     """
     Create acceptor from url.
 
@@ -33,5 +33,5 @@ def server_from_url(url: str, compress_threshold: int | None = None, encryption_
 
     if scheme == "tcp":
         port = u.port or 9933
-        return TCPAcceptor(u.hostname or "localhost", port, compress_threshold=compress_threshold, encryption_key=encryption_key)
+        return TCPAcceptor(u.hostname or "localhost", port, zone_name=zone_name, max_users=max_users, compress_threshold=compress_threshold, encryption_key=encryption_key)
     raise NotImplementedError
