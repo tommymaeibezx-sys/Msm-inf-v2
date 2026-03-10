@@ -12,7 +12,7 @@ logger = logging.getLogger("SFS2X/TCPTransport")
 class TCPTransport(Transport):
     """SmartFox Transport realisation with Async Streams."""
 
-    def __init__(self, host: str, port: int, compress_threshold: int | None = None, encryption_key: bytes | None = None) -> None:
+    def __init__(self, host: str, port: int, zone_name: str, max_users: int = 100, compress_threshold: int | None = None, encryption_key: bytes | None = None) -> None:
         super().__init__()
         self._host = host
         self._port = port
@@ -20,6 +20,8 @@ class TCPTransport(Transport):
         self._writer: StreamWriter | None = None
         self._encryption_key = encryption_key
         self._compress_threshold = compress_threshold
+        self.zone_name = zone_name
+        self.max_users = max_users
 
     @property
     def host(self) -> str:
@@ -78,13 +80,15 @@ class TCPTransport(Transport):
 class TCPAcceptor(Acceptor):
     """Server-Side implementation of the TCP Acceptor."""
 
-    def __init__(self, host: str, port: int, compress_threshold: int | None = None, encryption_key: bytes | None = None) -> None:
+    def __init__(self, host: str, port: int, zone_name: str, max_users: int = 100, compress_threshold: int | None = None, encryption_key: bytes | None = None) -> None:
         super().__init__()
         self._host = host
         self._port = port
         self._server: AbstractServer | None = None
         self._compress_threshold = compress_threshold
         self._encryption_key = encryption_key
+        self.zone_name = zone_name
+        self.max_users = max_users
 
     async def __aiter__(self) -> AsyncIterator[Transport]:  # type: ignore  # noqa: PGH003
         """Iterate all new connections."""
@@ -109,7 +113,7 @@ class TCPAcceptor(Acceptor):
     async def _on_conn(self, reader: StreamReader, writer: StreamWriter) -> None:
         host, port = writer.get_extra_info("peername")
         logger.info("Connection from %s:%s", host, port)
-        transport = TCPTransport(host, port)
+        transport = TCPTransport(host, port, self.zone_name, self.max_users)
         transport._reader = reader  # noqa: SLF001
         transport._writer = writer  # noqa: SLF001
         transport._closed = False  # noqa: SLF001
