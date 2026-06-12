@@ -1,14 +1,11 @@
-FROM openjdk:8-jre-slim
+FROM amazoncorretto:8
 
-# Instalar Python (necesario para las extensions)
-RUN apt-get update && apt-get install -y python3 python3-pip curl && rm -rf /var/lib/apt/lists/*
+RUN yum install -y python3 curl && yum clean all
 
 WORKDIR /app
 
-# Copiar todo el proyecto
 COPY . .
 
 EXPOSE 9933 8080
 
-# Comando para iniciar SmartFoxServer (ajusta si la ruta es diferente)
 CMD ["java", "-jar", "SFS2X/smartfoxserver2x.jar"]
