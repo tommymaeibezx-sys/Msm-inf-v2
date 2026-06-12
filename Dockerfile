@@ -8,4 +8,4 @@ COPY . .
 
 EXPOSE 9933 8080
 
-CMD ["java", "-jar", "SFS2X/smartfoxserver2x.jar"]
+CMD ["java", "-jar", "sfs2x/smartfoxserver2x.jar"]
