@@ -1,7 +1,5 @@
-from __future__ import annotations  # OBLIGATORIO EN LA LÍNEA 1: Evita el SyntaxError en Railway
-
 # ==============================================================================
-# REPLICA BACKEND MSM (v5.4.2) - EDICIÓN CORREGIDA PARA NUBE (RAILWAY)
+# REPLICA BACKEND MSM (v5.4.2) - EDICIÓN REMOVED-ANNOTATIONS PARA RAILWAY
 # Guardar como: server.py
 # ==============================================================================
 
@@ -76,7 +74,7 @@ class MsmZewServer:
     def log_separator(self, title):
         print(f"\n{'-'*30} {title} {'-'*30}")
 
-    async def on_client_message(self, client_session, message: Message):
+    async def on_client_message(self, client_session, message: "Message"):
         """Manejador principal de la extensión ZewSFS: Procesa comandos del juego."""
         sfsobj_req = message.payload 
         
