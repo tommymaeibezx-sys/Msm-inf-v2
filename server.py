@@ -1,5 +1,7 @@
+from __future__ import annotations  # OBLIGATORIO EN LA LÍNEA 1: Evita el SyntaxError en Railway
+
 # ==============================================================================
-# REPLICA BACKEND MSM (v5.4.2) - VERSIÓN ULTRA-COMPATIBLE PARA NUBE (RAILWAY)
+# REPLICA BACKEND MSM (v5.4.2) - EDICIÓN CORREGIDA PARA NUBE (RAILWAY)
 # Guardar como: server.py
 # ==============================================================================
 
@@ -16,25 +18,23 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(ROOT_DIR)
 
 # ==============================================================================
-# INYECTOR DE PARCHE VIRTUAL EN MEMORIA (INDISPENSABLE PARA CONTENEDORES READ-ONLY)
+# INYECTOR DE PARCHE VIRTUAL EN MEMORIA (PARA CONTENEDORES READ-ONLY)
 # ==============================================================================
 class DummyRoom:
     """Clase ficticia para saciar las importaciones circulares del framework"""
     pass
 
 class DummyMessage:
-    """Clase ficticia para pre-registrar anotaciones de tipo antes de la carga"""
+    """Clase ficticia para pre-registrar las anotaciones de tipo de red"""
     pass
 
-# Creamos e inyectamos los módulos virtualmente en el registro global de Python (sys.modules)
-# Esto evita que el archivo sfs2x/protocol/__init__.py rompa el backend
+# Forzar el registro preventivo en el diccionario interno del sistema de Python (sys.modules)
 try:
-    # Registrar de forma preventiva los espacios de nombres en memoria
     for mod_name in ['sfs2x', 'sfs2x.protocol', 'sfs2x.core', 'sfs2x.transport']:
         if mod_name not in sys.modules:
             sys.modules[mod_name] = types.ModuleType(mod_name)
     
-    # Inyectar atributos requeridos por las dependencias cruzadas defectuosas
+    # Inyectar atributos requeridos por las dependencias defectuosas de sfs2x
     sys.modules['sfs2x.protocol'].Room = DummyRoom
     sys.modules['sfs2x.protocol'].Message = DummyMessage
     sys.modules['sfs2x.transport'].Message = DummyMessage
@@ -42,9 +42,6 @@ try:
     sys.modules['sfs2x.transport'].base.Message = DummyMessage
 except Exception as patch_err:
     print(f"[*] Alerta del inyector de memoria: {patch_err}")
-
-# Habilitar la postergación de lectura de tipos global para evitar el NameError de Message
-from __future__ import annotations
 
 # ==============================================================================
 # IMPORTACIONES REALES DEL FRAMEWORK TRAS EL BYPASS VIRTUAL
@@ -64,7 +61,7 @@ class MsmZewServer:
         self.host = host
         self.port = port
         
-        # Enlazar handlers dinámicamente según la estructura de tu framework
+        # Enlazar handlers dinámicamente según la estructura de tu versión de ZewSFS
         try:
             self.acceptor = TCPAcceptor(self.host, self.port, self.on_client_message)
         except TypeError:
@@ -150,7 +147,7 @@ class MsmZewServer:
                     self.log_separator("CONEXIÓN CERRADA")
                     break
                 
-                self.log_separator("PAQUETE EN TRANSITO")
+                self.log_separator("PAQUETE EN TRÁNSITO")
                 print(f"[Volumen de datos]: {len(data)} bytes")
                 
         except Exception as e:
