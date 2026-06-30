@@ -1,5 +1,5 @@
 # ==============================================================================
-# REPLICA BACKEND MSM (v5.4.2) - EDICIÓN REMOVED-ANNOTATIONS PARA RAILWAY
+# REPLICA BACKEND MSM (v5.4.2) - EDICIÓN DE DESPLIEGUE FINAL PARA RAILWAY
 # Guardar como: server.py
 # ==============================================================================
 
@@ -11,45 +11,41 @@ import socket
 import json
 import types
 
-# 1. Asegurar rutas en el contenedor de Linux de Railway
+# 1. Configurar y asegurar rutas en el contenedor de Linux de Railway
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(ROOT_DIR)
 
 # ==============================================================================
-# INYECTOR DE PARCHE VIRTUAL EN MEMORIA (PARA CONTENEDORES READ-ONLY)
+# PROCESADOR DE ARRANQUE SEGURO TRAS EL CONTROL DE DEPENDENCIAS CIRCULARES
 # ==============================================================================
 class DummyRoom:
-    """Clase ficticia para saciar las importaciones circulares del framework"""
+    """Clase ficticia mínima para satisfacer el __init__.py defectuoso"""
     pass
 
-class DummyMessage:
-    """Clase ficticia para pre-registrar las anotaciones de tipo de red"""
-    pass
-
-# Forzar el registro preventivo en el diccionario interno del sistema de Python (sys.modules)
+# Forzar la carga limpia interceptando el choque estructural de ZewSFS
 try:
-    for mod_name in ['sfs2x', 'sfs2x.protocol', 'sfs2x.core', 'sfs2x.transport']:
-        if mod_name not in sys.modules:
-            sys.modules[mod_name] = types.ModuleType(mod_name)
+    # Intentamos la importación estándar directo de tus carpetas
+    from sfs2x.core import SFSObject
+    from sfs2x.protocol import Message
+    from sfs2x.transport import TCPAcceptor
+except ImportError:
+    # Si choca por el Room, inyectamos el Dummy exclusivamente en el submódulo roto
+    if 'sfs2x.protocol' not in sys.modules:
+        sys.modules['sfs2x.protocol'] = types.ModuleType('sfs2x.protocol')
     
-    # Inyectar atributos requeridos por las dependencias defectuosas de sfs2x
     sys.modules['sfs2x.protocol'].Room = DummyRoom
-    sys.modules['sfs2x.protocol'].Message = DummyMessage
-    sys.modules['sfs2x.transport'].Message = DummyMessage
-    sys.modules['sfs2x.transport'].base = types.ModuleType('sfs2x.transport.base')
-    sys.modules['sfs2x.transport'].base.Message = DummyMessage
-except Exception as patch_err:
-    print(f"[*] Alerta del inyector de memoria: {patch_err}")
+    
+    # Reintentamos la carga con el espacio de nombres balanceado en la RAM
+    from sfs2x.core import SFSObject
+    from sfs2x.protocol import Message
+    from sfs2x.transport import TCPAcceptor
 
-# ==============================================================================
-# IMPORTACIONES REALES DEL FRAMEWORK TRAS EL BYPASS VIRTUAL
-# ==============================================================================
-from sfs2x.core import SFSObject
-from sfs2x.protocol import Message
-from sfs2x.transport import TCPAcceptor
-
-# Re-vincular la clase real una vez cargado el protocolo legítimo
-sys.modules['sfs2x.protocol'].Room = DummyRoom
+# Sellar de forma definitiva la referencia del objeto para evitar pérdidas en transacciones
+try:
+    import sfs2x.protocol
+    sfs2x.protocol.Room = DummyRoom
+except Exception:
+    pass
 
 # ==============================================================================
 # LÓGICA DEL SERVIDOR REPLICA MY SINGING MONSTERS 5.4.2
@@ -59,7 +55,7 @@ class MsmZewServer:
         self.host = host
         self.port = port
         
-        # Enlazar handlers dinámicamente según la estructura de tu versión de ZewSFS
+        # Enlazar handlers dinámicamente adaptándose a la firma de tu versión de ZewSFS
         try:
             self.acceptor = TCPAcceptor(self.host, self.port, self.on_client_message)
         except TypeError:
@@ -149,7 +145,7 @@ class MsmZewServer:
                 print(f"[Volumen de datos]: {len(data)} bytes")
                 
         except Exception as e:
-            print(f"[-] Excepción en el flujo: {e}")
+            print(f"[-] Excepción en el flujo de red: {e}")
         finally:
             writer.close()
             await writer.wait_closed()
@@ -176,20 +172,22 @@ class MsmZewServer:
             try:
                 raw_server = await asyncio.start_server(self.handle_raw_connection, self.host, self.port)
                 self.log_separator("✓ SERVIDOR EN LÍNEA EN RAILWAY")
-                print(f"[*] Escuchando activamente en la regla de red interna: {self.host}:{self.port}")
+                print(f"[*] Escuchando activamente en la regla de red interna del contenedor: {self.host}:{self.port}")
                 self.log_separator("CONSOLA DE MONITOREO")
                 
                 async with raw_server:
                     await raw_server.serve_forever()
             except Exception as fatal_socket_err:
-                print(f"[-] Imposible asegurar el enlace de red: {fatal_socket_err}")
+                print(f"[-] Imposible asegurar el enlace del socket TCP: {fatal_socket_err}")
                 return
             
         while True:
             await asyncio.sleep(3600)
 
 if __name__ == "__main__":
+    # Capturar dinámicamente la variable de entorno obligatoria impuesta por Railway
     PORT_SELECCIONADO = int(os.environ.get("PORT", 9933))
+    
     server = MsmZewServer(host="0.0.0.0", port=PORT_SELECCIONADO)
     try:
         asyncio.run(server.run())
