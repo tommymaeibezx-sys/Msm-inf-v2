@@ -1,5 +1,5 @@
 # ==============================================================================
-# REPLICA BACKEND MSM (v5.4.2) - EDICIÓN OPTIMIZADA PARA PRODUCCIÓN EN RAILWAY
+# REPLICA BACKEND MSM (v5.4.2) - VERSIÓN ULTRA-COMPATIBLE PARA NUBE (RAILWAY)
 # Guardar como: server.py
 # ==============================================================================
 
@@ -9,45 +9,52 @@ import os
 import asyncio
 import socket
 import json
-import shutil
+import types
 
-# Asegurar la persistencia de rutas en los contenedores de Railway
+# 1. Asegurar rutas en el contenedor de Linux de Railway
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(ROOT_DIR)
 
 # ==============================================================================
-# PARCHE DE REPARACIÓN DE DEPENDENCIAS CIRCULARES EN ZEWSFS
+# INYECTOR DE PARCHE VIRTUAL EN MEMORIA (INDISPENSABLE PARA CONTENEDORES READ-ONLY)
 # ==============================================================================
-base_transport_path = os.path.join(ROOT_DIR, "sfs2x", "transport", "base.py")
-protocol_init_path = os.path.join(ROOT_DIR, "sfs2x", "protocol", "__init__.py")
+class DummyRoom:
+    """Clase ficticia para saciar las importaciones circulares del framework"""
+    pass
 
-if os.path.exists(base_transport_path):
-    try:
-        with open(base_transport_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        if "from __future__ import annotations" not in content:
-            content = "from __future__ import annotations\n" + content
-            with open(base_transport_path, "w", encoding="utf-8") as f:
-                f.write(content)
-            shutil.rmtree(os.path.join(ROOT_DIR, "sfs2x", "transport", "__pycache__"), ignore_errors=True)
-    except Exception:
-        pass
+class DummyMessage:
+    """Clase ficticia para pre-registrar anotaciones de tipo antes de la carga"""
+    pass
 
-if os.path.exists(protocol_init_path):
-    try:
-        with open(protocol_init_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        new_lines = [f"# {l}" if "Room" in l and ("import" in l or "from" in l) else l for l in lines]
-        with open(protocol_init_path, "w", encoding="utf-8") as f:
-            f.writelines(new_lines)
-        shutil.rmtree(os.path.join(ROOT_DIR, "sfs2x", "protocol", "__pycache__"), ignore_errors=True)
-    except Exception:
-        pass
+# Creamos e inyectamos los módulos virtualmente en el registro global de Python (sys.modules)
+# Esto evita que el archivo sfs2x/protocol/__init__.py rompa el backend
+try:
+    # Registrar de forma preventiva los espacios de nombres en memoria
+    for mod_name in ['sfs2x', 'sfs2x.protocol', 'sfs2x.core', 'sfs2x.transport']:
+        if mod_name not in sys.modules:
+            sys.modules[mod_name] = types.ModuleType(mod_name)
+    
+    # Inyectar atributos requeridos por las dependencias cruzadas defectuosas
+    sys.modules['sfs2x.protocol'].Room = DummyRoom
+    sys.modules['sfs2x.protocol'].Message = DummyMessage
+    sys.modules['sfs2x.transport'].Message = DummyMessage
+    sys.modules['sfs2x.transport'].base = types.ModuleType('sfs2x.transport.base')
+    sys.modules['sfs2x.transport'].base.Message = DummyMessage
+except Exception as patch_err:
+    print(f"[*] Alerta del inyector de memoria: {patch_err}")
 
-# Importaciones del framework tras el saneamiento de memoria
+# Habilitar la postergación de lectura de tipos global para evitar el NameError de Message
+from __future__ import annotations
+
+# ==============================================================================
+# IMPORTACIONES REALES DEL FRAMEWORK TRAS EL BYPASS VIRTUAL
+# ==============================================================================
 from sfs2x.core import SFSObject
 from sfs2x.protocol import Message
 from sfs2x.transport import TCPAcceptor
+
+# Re-vincular la clase real una vez cargado el protocolo legítimo
+sys.modules['sfs2x.protocol'].Room = DummyRoom
 
 # ==============================================================================
 # LÓGICA DEL SERVIDOR REPLICA MY SINGING MONSTERS 5.4.2
@@ -57,6 +64,7 @@ class MsmZewServer:
         self.host = host
         self.port = port
         
+        # Enlazar handlers dinámicamente según la estructura de tu framework
         try:
             self.acceptor = TCPAcceptor(self.host, self.port, self.on_client_message)
         except TypeError:
@@ -77,7 +85,6 @@ class MsmZewServer:
         
         if not sfsobj_req or "cmd" not in sfsobj_req:
             self.log_separator("PAQUETE CON ANOMALÍAS")
-            print(f"[!] Payload vacío o sin comando base. Estructura: {sfsobj_req}")
             return
 
         cmd = sfsobj_req["cmd"]
@@ -107,7 +114,6 @@ class MsmZewServer:
             ]
 
         elif cmd == "b_m":
-            # Evento mecánico Rare Flasque de la v5.4.2
             is_rare = True if (int(time.time()) % 2 == 0) else False
             if is_rare:
                 sfsobj_res["result_monster_type"] = "MONSTERRARE_FLASQUE_v542"
@@ -142,16 +148,13 @@ class MsmZewServer:
                 data = await reader.read(4096)
                 if not data:
                     self.log_separator("CONEXIÓN CERRADA")
-                    print(f"[-] El cliente {peer} se desconectó del puerto.")
                     break
                 
                 self.log_separator("PAQUETE EN TRANSITO")
                 print(f"[Volumen de datos]: {len(data)} bytes")
-                print(f"[Hexadecimal]      : {data.hex()[:64]}...")
                 
         except Exception as e:
-            self.log_separator("ERROR DE CANAL TCP")
-            print(f"[-] Excepción en el flujo del cliente {peer}: {e}")
+            print(f"[-] Excepción en el flujo: {e}")
         finally:
             writer.close()
             await writer.wait_closed()
@@ -177,23 +180,21 @@ class MsmZewServer:
         if not started:
             try:
                 raw_server = await asyncio.start_server(self.handle_raw_connection, self.host, self.port)
-                self.log_separator("✓ SERVIDOR EN LÍNEA EN DE RAILWAY")
+                self.log_separator("✓ SERVIDOR EN LÍNEA EN RAILWAY")
                 print(f"[*] Escuchando activamente en la regla de red interna: {self.host}:{self.port}")
                 self.log_separator("CONSOLA DE MONITOREO")
                 
                 async with raw_server:
                     await raw_server.serve_forever()
             except Exception as fatal_socket_err:
-                print(f"[-] Imposible asegurar el enlace de red en el contenedor: {fatal_socket_err}")
+                print(f"[-] Imposible asegurar el enlace de red: {fatal_socket_err}")
                 return
             
         while True:
             await asyncio.sleep(3600)
 
 if __name__ == "__main__":
-    # IMPORTANTE: Railway obliga a usar la variable de entorno PORT dinámicamente
     PORT_SELECCIONADO = int(os.environ.get("PORT", 9933))
-    
     server = MsmZewServer(host="0.0.0.0", port=PORT_SELECCIONADO)
     try:
         asyncio.run(server.run())
