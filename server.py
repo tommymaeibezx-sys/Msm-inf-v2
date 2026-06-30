@@ -1,5 +1,5 @@
 # ==============================================================================
-# REPLICA BACKEND MSM (v5.4.2) - SOLUCIÓN TOTAL LOGICA DE DEPENDENCIAS CIRCULARES
+# REPLICA BACKEND MSM (v5.4.2) - SERVIDOR API HTTP PURO PARA BBB_AUTH_SERVER
 # Guardar como: server.py
 # ==============================================================================
 
@@ -9,57 +9,33 @@ import os
 import asyncio
 import json
 import types
+import importlib
 
-# 1. Configurar y asegurar rutas en el contenedor de Linux de Railway
+# 1. Configurar y asegurar rutas de ejecución en el contenedor de Railway
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(ROOT_DIR)
 
-# ==============================================================================
-# INYECTOR DE PARCHE VIRTUAL MEDIANTE INTERCEPTACIÓN DINÁMICA DE DICCIONARIO
-# ==============================================================================
 class DummyRoom:
-    """Clase ficticia mínima para satisfacer el __init__.py defectuoso de ZewSFS"""
     pass
 
-# Forzar el registro de la propiedad de forma preventiva sin romper la estructura de paquetes
 try:
-    import importlib
-    
-    # Obligamos a Python a registrar las carpetas reales de forma secuencial
-    sfs_module = importlib.import_module("sfs2x")
-    protocol_module = importlib.import_module("sfs2x.protocol")
-    
-    # Inyectamos el objeto faltante directamente dentro del submódulo cargado
-    setattr(protocol_module, "Room", DummyRoom)
-    sys.modules["sfs2x.protocol"].Room = DummyRoom
-    
-    print("[✓] Inyección preventiva de memoria completada de forma nativa.")
-except Exception as e:
-    print(f"[*] Alerta de optimización de inyector: {e}")
+    sys.modules['sfs2x.protocol'] = importlib.import_module('sfs2x.protocol')
+    setattr(sys.modules['sfs2x.protocol'], 'Room', DummyRoom)
+except Exception:
+    pass
 
-# ==============================================================================
-# IMPORTACIONES REALES DEL FRAMEWORK TRAS LA INTERCEPTACIÓN
-# ==============================================================================
 from sfs2x.core import SFSObject
 from sfs2x.protocol import Message
 from sfs2x.transport import TCPAcceptor
 
-# Asegurar la persistencia del parche en el entorno global ante recargas asíncronas
-try:
-    import sfs2x.protocol
-    sfs2x.protocol.Room = DummyRoom
-except Exception:
-    pass
-
 # ==============================================================================
-# LÓGICA DEL SERVIDOR REPLICA MY SINGING MONSTERS 5.4.2
+# MOTORES LÓGICOS DEL BACKEND API HTTP
 # ==============================================================================
 class MsmZewServer:
     def __init__(self, host="0.0.0.0", port=9933):
         self.host = host
         self.port = port
         
-        # Enlazar handlers adaptándose dinámicamente a tu versión de ZewSFS
         try:
             self.acceptor = TCPAcceptor(self.host, self.port, self.on_client_message)
         except TypeError:
@@ -68,55 +44,89 @@ class MsmZewServer:
                 self.acceptor.on_message = self.on_client_message
             except TypeError:
                 self.acceptor = TCPAcceptor(host=self.host, port=self.port)
-                if hasattr(self.acceptor, 'register_handler'):
-                    self.acceptor.register_handler(self.on_client_message)
 
     def log_separator(self, title):
         print(f"\n{'-'*30} {title} {'-'*30}")
 
     async def on_client_message(self, client_session, message: "Message"):
-        """Procesador nativo de comandos binarios SmartFox."""
-        sfsobj_req = message.payload 
-        if not sfsobj_req or "cmd" not in sfsobj_req:
-            return
-
-        cmd = sfsobj_req["cmd"]
-        self.log_separator("PETICIÓN BINARIA SFS")
-        print(f"[Endpoint SFS]: '{cmd}'")
-        print(f"[Payload SFS] : {json.dumps(sfsobj_req, indent=2)}")
-
-        sfsobj_res = {"cmd": cmd, "status": 1}
-
-        if cmd == "g_u_d":
-            sfsobj_res["islands"] = [{"island_id": 1, "monsters": [{"monster_instance_id": 12005, "monster_id": "MONSTER_A", "level": 15, "happiness": 100, "last_collected": int(time.time()) - 60}]}]
-        elif cmd == "b_m":
-            sfsobj_res["result_monster_type"] = "MONSTERRARE_FLASQUE_v542"
-            sfsobj_res["time_required"] = 86400  
-            sfsobj_res["rare_trigger"] = True
-        elif cmd == "c_b_p":
-            sfsobj_res["prestige_level"] = 3
-            sfsobj_res["reward_stickers"] = ["sticker_summer_2026_01"]
-
-        response_message = Message(payload=sfsobj_res)
-        await client_session.send(response_message)
+        pass # Ignorado ya que el juego opera por HTTP puro en esta versión
 
     async def handle_http_request(self, writer, raw_request: str):
-        """Servidor Web Integrado para responder a las llamadas de BBB_AUTH_SERVER."""
+        """
+        Enrutador API HTTP Avanzado. Captura la ruta que pide el juego 
+        a través de BBB_AUTH_SERVER y le devuelve el JSON correcto.
+        """
         lines = raw_request.split("\r\n")
         first_line = lines[0] if lines else ""
         
-        self.log_separator("PETICIÓN WEB HTTP DETECTADA")
+        self.log_separator("PETICIÓN API HTTP DETECTADA")
         print(f"[Request Line]: {first_line}")
 
-        response_data = {
-            "status": "success",
-            "user_id": 84629473,
-            "session_token": "msm_cloud_token_v542",
-            "server_time": int(time.time()),
-            "maintenance": False
-        }
+        # Identificar la ruta (endpoint) solicitada por el cliente de MSM
+        parts = first_line.split(" ")
+        path = parts[1] if len(parts) > 1 else "/"
         
-        body = json.dumps(response_data)
+        print(f"[Ruta Pedida] : {path}")
+
+        # Inicializar el contenedor base de respuesta JSON
+        response_data = {"status": "success", "server_time": int(time.time())}
+
+        # --------------------------------======================================
+        # ENRUTADOR DE RUTAS WEB (ENDPOINTS HTTP MSM v5.4.2)
+        # --------------------------------======================================
+        if "login" in path or "auth" in path or path == "/":
+            # --- Endpoint de Inicio de Sesión ---
+            response_data.update({
+                "user_id": 84629473,
+                "session_token": "msm_http_token_v542",
+                "diamonds": 9999,
+                "coins": 5000000,
+                "relics": 500,
+                "maintenance": False
+            })
+            print("[Acción]      : Procesando Autenticación de Usuario.")
+
+        elif "g_u_d" in path or "user_data" in path or "islands" in path:
+            # --- Endpoint para Cargar el Estado de las Islas ---
+            response_data["islands"] = [
+                {
+                    "island_id": 1, # Isla de Planta
+                    "monsters": [
+                        {
+                            "monster_instance_id": 12005,
+                            "monster_id": "MONSTER_A", # Noggin
+                            "level": 15,
+                            "happiness": 100,
+                            "last_collected": int(time.time()) - 60
+                        }
+                    ]
+                }
+            ]
+            print("[Acción]      : Cargando Estructuras e Islas del Jugador v5.4.2.")
+
+        elif "b_m" in path or "breed" in path:
+            # --- Endpoint de Cruce de Criaturas (Evento Rare Flasque de la 5.4.2) ---
+            response_data.update({
+                "result_monster_type": "MONSTERRARE_FLASQUE_v542",
+                "time_required": 86400,
+                "rare_trigger": True
+            })
+            print("[Acción]      : Ejecutando Cruce Automático de Monstruo Raro.")
+
+        elif "c_b_p" in path or "prestige" in path:
+            # --- Endpoint de Prestigio de Estructuras v5.4.2 ---
+            response_data.update({
+                "prestige_level": 3,
+                "reward_stickers": ["sticker_summer_2026_01"]
+            })
+            print("[Acción]      : Actualizando Prestigio del Clubbox.")
+
+        else:
+            # Fallback genérico para cualquier otra ruta de la API
+            response_data["msg"] = "MSM_HTTP_ENDPOINT_OK"
+
+        # Construir la respuesta con las cabeceras HTTP estándar de Railway
+        body = json.dumps(response_data, indent=2)
         response = (
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json\r\n"
@@ -129,59 +139,38 @@ class MsmZewServer:
         
         writer.write(response.encode('utf-8'))
         await writer.drain()
-        print("[<- Response HTTP]: Datos de inicio de sesión devueltos al APK.")
+        print(f"[<- Response] : JSON enviado de vuelta al APK:\n{body}")
 
     async def handle_hybrid_connection(self, reader, writer):
-        """Discriminador automático de protocolo: Separa HTTP de SmartFox binario."""
-        peer = writer.get_extra_info('peername')
         try:
             data = await reader.read(4096)
             if not data:
                 return
 
-            if data[:3] in (b'GET', b'POS', b'PUT', b'DEL', b'OPT'):
-                raw_request = data.decode('utf-8', errors='ignore')
-                await self.handle_http_request(writer, raw_request)
-            else:
-                self.log_separator("TRÁFICO BINARIO DETECTADO")
-                print(f"[Origen]: {peer} -> Canalizando al flujo del servidor...")
-                print(f"[Volumen]: {len(data)} bytes recibidos.")
+            raw_request = data.decode('utf-8', errors='ignore')
+            await self.handle_http_request(writer, raw_request)
                 
         except Exception as e:
-            print(f"[-] Error en conexión híbrida: {e}")
+            print(f"[-] Error en el canal de la API: {e}")
         finally:
             writer.close()
             await writer.wait_closed()
 
     async def run(self):
-        self.log_separator("INICIALIZACIÓN DEL BACKEND HÍBRIDO")
+        self.log_separator("INICIALIZACIÓN DEL BACKEND API HTTP")
         print(f"[*] Abriendo sockets en la interfaz global 0.0.0.0:{self.port}...")
         
-        started = False
-        for method_name in ['bind', 'listen', 'serve_forever', 'start_server', 'run']:
-            if hasattr(self.acceptor, method_name):
-                method = getattr(self.acceptor, method_name)
-                try:
-                    if asyncio.iscoroutinefunction(method):
-                        await method()
-                    else:
-                        method()
-                    started = True
-                    break
-                except Exception:
-                    pass
-        
-        if not started:
-            try:
-                raw_server = await asyncio.start_server(self.handle_hybrid_connection, self.host, self.port)
-                self.log_separator("✓ SERVIDOR INTEGRADO ONLINE EN RAILWAY")
-                print(f"[✓] Escuchando solicitudes WEB y SOCKETS en el mismo puerto: {self.port}")
-                
-                async with raw_server:
-                    await raw_server.serve_forever()
-            except Exception as fatal_err:
-                print(f"[-] Error fatal de red en el puerto: {fatal_err}")
-                return
+        try:
+            # Levantamos el servidor HTTP asíncrono puro sobre el puerto asignado
+            raw_server = await asyncio.start_server(self.handle_hybrid_connection, self.host, self.port)
+            self.log_separator("✓ API HTTP ONLINE EN RAILWAY")
+            print(f"[✓] Servidor de endpoints escuchando peticiones en el puerto: {self.port}")
+            
+            async with raw_server:
+                await raw_server.serve_forever()
+        except Exception as fatal_err:
+            print(f"[-] Error fatal de red en la API: {fatal_err}")
+            return
 
 if __name__ == "__main__":
     PORT_SELECCIONADO = int(os.environ.get("PORT", 9933))
